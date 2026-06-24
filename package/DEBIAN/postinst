@@ -1,0 +1,79 @@
+#!/bin/bash
+set -e
+
+INSTALL_DIR="/opt/parlex"
+CONFIG_DIR="/etc/parlex"
+DATA_DIR="/var/lib/parlex"
+
+# ── Virtualenv + dépendances ───────────────────────────────────────────────────
+echo "Parlex : création du virtualenv..."
+python3 -m venv "$INSTALL_DIR/venv"
+"$INSTALL_DIR/venv/bin/pip" install --quiet \
+    sounddevice pyserial pyyaml numpy 2>/dev/null || \
+"$INSTALL_DIR/venv/bin/pip" install \
+    sounddevice pyserial pyyaml numpy
+
+# TUI Textual (optionnelle — ignore l'erreur si pip échoue)
+"$INSTALL_DIR/venv/bin/pip" install --quiet "textual>=0.50.0" 2>/dev/null || true
+
+# ── Arborescence données ────────────────────────────────────────────────────────
+mkdir -p "$DATA_DIR/voicemail" "$DATA_DIR/announce"
+
+# ── Config par défaut (ne pas écraser si déjà présente) ────────────────────────
+if [ ! -f "$CONFIG_DIR/config.yaml" ]; then
+    # Détection AIOC (VID=0483 / PID=a30c)
+    AIOC_SERIAL=""
+    AIOC_CARD_NAME=""
+    for dev in /dev/ttyACM*; do
+        [ -e "$dev" ] || continue
+        info=$(udevadm info --query=property --name="$dev" 2>/dev/null) || continue
+        vid=$(echo "$info" | grep '^ID_VENDOR_ID=' | cut -d= -f2 | tr -d '[:space:]')
+        pid=$(echo "$info" | grep '^ID_MODEL_ID='  | cut -d= -f2 | tr -d '[:space:]')
+        if [ "$vid" = "0483" ] && [ "$pid" = "a30c" ]; then
+            AIOC_SERIAL="$dev"
+            AIOC_CARD_NAME="AIOC"
+            break
+        fi
+    done
+
+    export AIOC_SERIAL AIOC_CARD_NAME
+    "$INSTALL_DIR/venv/bin/python" -c "
+from parlex.config import RepeaterConfig
+from pathlib import Path
+import os
+cfg = RepeaterConfig()
+serial = os.environ.get('AIOC_SERIAL', '')
+card   = os.environ.get('AIOC_CARD_NAME', '')
+if serial:
+    cfg.serial_port = serial
+if card:
+    cfg.alsa_capture  = f'plughw:{card},0'
+    cfg.alsa_playback = f'plughw:{card},0'
+cfg.save(Path('/etc/parlex/config.yaml'))
+"
+    if [ -n "$AIOC_SERIAL" ]; then
+        echo "Parlex : AIOC détecté → $AIOC_SERIAL"
+    else
+        echo "Parlex : AIOC non détecté — éditez /etc/parlex/config.yaml"
+    fi
+fi
+
+# ── Groupes ─────────────────────────────────────────────────────────────────────
+for grp in audio dialout; do
+    getent group "$grp" > /dev/null 2>&1 && \
+        usermod -aG "$grp" root 2>/dev/null || true
+done
+
+# ── Répertoire run (tmpfs) ──────────────────────────────────────────────────────
+echo "d /run/parlex 0755 root root -" > /etc/tmpfiles.d/parlex.conf
+mkdir -p /run/parlex
+touch /var/log/parlex.log && chmod 644 /var/log/parlex.log
+
+# ── Service systemd ─────────────────────────────────────────────────────────────
+if command -v systemctl > /dev/null 2>&1; then
+    systemctl daemon-reload
+    systemctl enable parlex.service
+    echo "Parlex : service activé (démarrez avec : systemctl start parlex)"
+fi
+
+exit 0

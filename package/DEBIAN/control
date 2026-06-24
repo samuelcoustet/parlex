@@ -1,0 +1,15 @@
+Package: parlex
+Version: 1.0.0
+Architecture: all
+Maintainer: Samuel Coustet <samuelcoustet@gmail.com>
+Depends: python3 (>= 3.10), python3-venv, python3-pip, libasound2, alsa-utils, udev
+Recommends: tailscale
+Section: hamradio
+Priority: optional
+Description: Relais simplex store-and-forward — RPi Zero + AIOC
+ Parlex est un relais simplex logiciel conçu pour fonctionner sur un
+ Raspberry Pi Zero avec l'interface AIOC (AllInOneCable).
+ .
+ Fonctionnalités : enregistrement/retransmission VOX, voicemail,
+ annonces programmées, identification CW et vocale, CTCSS,
+ commandes DTMF, surveillance relais distant, TUI Textual.

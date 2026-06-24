@@ -1,0 +1,12 @@
+#!/bin/bash
+set -e
+
+if [ "$1" = "purge" ]; then
+    rm -rf /opt/parlex /etc/parlex /var/lib/parlex
+    rm -f  /var/log/parlex.log /etc/tmpfiles.d/parlex.conf
+    rm -f  /usr/local/bin/parlex
+    rm -f  /etc/systemd/system/parlex.service
+    systemctl daemon-reload 2>/dev/null || true
+fi
+
+exit 0
