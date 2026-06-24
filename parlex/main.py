@@ -15,8 +15,9 @@ Commandes :
   simplex-repeater announce list
   simplex-repeater announce set <slot> <interval_s> [<offset_s>]
   simplex-repeater announce erase <slot>
+  simplex-repeater castanara [--url URL] [--watch]
 
-Le daemon écrit /run/simplex-repeater/status.json toutes les 2s.
+Le daemon écrit /run/parlex/status.json toutes les 2s.
 Les commandes status/stats le lisent si le daemon tourne.
 """
 from __future__ import annotations
@@ -32,7 +33,7 @@ from typing import Any
 
 from .config import RepeaterConfig, CONFIG_PATH
 
-STATUS_FILE = Path("/run/simplex-repeater/status.json")
+STATUS_FILE = Path("/run/parlex/status.json")
 
 log = logging.getLogger("main")
 
@@ -347,8 +348,34 @@ def cmd_ann_erase(args) -> None:
 # Daemon + écriture status.json
 # ═════════════════════════════════════════════════════════════════════════════
 
+# ─── Systemd watchdog (sans dépendance externe) ───────────────────────────────
+
+def _sd_notify(msg: str) -> None:
+    """Envoie un message sd_notify à systemd (Type=notify / WatchdogSec)."""
+    import os, socket
+    sock_path = os.environ.get("NOTIFY_SOCKET", "")
+    if not sock_path:
+        return
+    try:
+        addr = sock_path.lstrip("@")
+        with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as s:
+            s.connect(addr)
+            s.send(msg.encode())
+    except Exception:
+        pass
+
+
+def _watchdog_loop(interval: float = 10.0) -> None:
+    """Thread : envoie WATCHDOG=1 à systemd toutes les `interval` secondes."""
+    while True:
+        _sd_notify("WATCHDOG=1")
+        time.sleep(interval)
+
+
+# ─── Status JSON ──────────────────────────────────────────────────────────────
+
 def _write_status_loop(rep, interval: float = 2.0) -> None:
-    """Thread : écrit /run/simplex-repeater/status.json toutes les `interval` secondes."""
+    """Thread : écrit /run/parlex/status.json toutes les `interval` secondes."""
     STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
     t0 = time.time()
     while True:
@@ -375,6 +402,7 @@ def cmd_run(args) -> None:
 
     def _shutdown(sig, frame):
         log.info("Signal %s — arrêt", sig)
+        _sd_notify("STOPPING=1")
         rep.stop()
         if STATUS_FILE.exists():
             try:
@@ -388,9 +416,14 @@ def cmd_run(args) -> None:
 
     rep.start()
 
+    # Notifie systemd que le service est prêt
+    _sd_notify("READY=1")
+
     # Thread status.json
-    t = threading.Thread(target=_write_status_loop, args=(rep,), daemon=True)
-    t.start()
+    threading.Thread(target=_write_status_loop, args=(rep,), daemon=True).start()
+
+    # Thread watchdog systemd (envoie WATCHDOG=1 toutes les 10s, WatchdogSec=30)
+    threading.Thread(target=_watchdog_loop, args=(10.0,), daemon=True).start()
 
     if args.tui:
         from .tui import run_tui
@@ -407,6 +440,93 @@ def cmd_run(args) -> None:
             pass
 
     rep.stop()
+
+
+# ─── Castanara monitoring ─────────────────────────────────────────────────────
+
+def _castanara_fetch(url: str, path: str, timeout: float = 3.0) -> dict | None:
+    """Interroge le dashboard Castanara via HTTP."""
+    import urllib.request, urllib.error
+    try:
+        with urllib.request.urlopen(f"{url.rstrip('/')}{path}", timeout=timeout) as r:
+            return json.loads(r.read().decode())
+    except Exception:
+        return None
+
+
+def cmd_castanara(args) -> None:
+    cfg, _ = _load_cfg(args)
+    url = getattr(args, "url", None) or cfg.castanara_url
+
+    print(_hr())
+    print(f" Castanara — {url}")
+    print(_hr())
+
+    status  = _castanara_fetch(url, "/api/status")
+    stats   = _castanara_fetch(url, "/api/stats")
+    sysinfo = _castanara_fetch(url, "/api/sysinfo")
+
+    if status is None:
+        print(f"  Impossible de joindre {url}")
+        print("  Vérifiez que le daemon Castanara tourne et que l'URL est correcte.")
+        print(f"  Configurer : parlex config set castanara_url {url}")
+        sys.exit(1)
+
+    # État
+    state   = status.get("state", "?")
+    is_tx   = status.get("is_tx", False)
+    level   = status.get("level", 0.0)
+    dtmf    = status.get("dtmf", "") or "—"
+    bar_w   = 20
+    bar     = "█" * int(level * bar_w) + "░" * (bar_w - int(level * bar_w))
+    tx_str  = "TX EN COURS" if is_tx else "en attente"
+
+    print(f"  État          {state}")
+    print(f"  PTT           {tx_str}")
+    print(f"  Niveau RX     [{bar}] {level:.3f}")
+    print(f"  DTMF          {dtmf}")
+
+    # Stats QSO
+    if stats:
+        tx_s = int(stats.get("tx_total_seconds", 0))
+        last = stats.get("last_qso_time")
+        last_str = (time.strftime("%d/%m %H:%M:%S", time.localtime(last))
+                    if last else "—")
+        print()
+        print(f"  QSO session   {stats.get('qso_count', 0)}")
+        print(f"  TX total      {tx_s//60}m{tx_s%60:02d}s")
+        print(f"  Dernier QSO   {last_str}")
+
+    # Sysinfo
+    if sysinfo:
+        print()
+        cpu  = sysinfo.get("cpu_percent", "?")
+        ram  = sysinfo.get("ram_percent", "?")
+        temp = sysinfo.get("cpu_temp", "?")
+        up   = int(sysinfo.get("uptime_s", 0))
+        print(f"  CPU           {cpu}%")
+        print(f"  RAM           {ram}%")
+        print(f"  Température   {temp}°C")
+        print(f"  Uptime        {up//3600}h{(up%3600)//60:02d}m{up%60:02d}s")
+
+    print(_hr())
+
+    # Mode watch
+    if getattr(args, "watch", False):
+        print("  Mode watch — Ctrl+C pour quitter")
+        try:
+            while True:
+                time.sleep(2)
+                st = _castanara_fetch(url, "/api/status")
+                if st:
+                    lvl   = st.get("level", 0.0)
+                    b     = "█" * int(lvl * bar_w) + "░" * (bar_w - int(lvl * bar_w))
+                    tx    = "TX" if st.get("is_tx") else "RX"
+                    state = st.get("state", "?")
+                    ts    = time.strftime("%H:%M:%S")
+                    print(f"  {ts}  {state:<14} {tx}  [{b}] {lvl:.3f}", end="\r")
+        except KeyboardInterrupt:
+            print()
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -517,6 +637,16 @@ def build_parser() -> argparse.ArgumentParser:
         else:
             args.func(args)
     p_ann.set_defaults(func=_ann_dispatch)
+
+    # ── castanara ─────────────────────────────────────────────────────────────
+    p_cast = sub.add_parser("castanara",
+                            help="Surveillance du relais Castanara (HTTP API)")
+    _add_config_arg(p_cast)
+    p_cast.add_argument("--url",   default=None,
+                        help="URL du dashboard Castanara (ex: http://castanara.local:8080)")
+    p_cast.add_argument("--watch", action="store_true",
+                        help="Mode watch : rafraîchit en continu")
+    p_cast.set_defaults(func=cmd_castanara)
 
     return root
 

@@ -106,6 +106,10 @@ class RepeaterConfig:
     # ── Output pins ────────────────────────────────────────────────────────
     output_pins: dict = field(default_factory=lambda: {"0": False, "1": False})
 
+    # ── Surveillance relais Castanara ───────────────────────────────────────
+    castanara_url:     str  = "http://localhost:8080"
+    castanara_enabled: bool = False
+
     @classmethod
     def load(cls, path: Path = CONFIG_PATH) -> "RepeaterConfig":
         if path.exists():

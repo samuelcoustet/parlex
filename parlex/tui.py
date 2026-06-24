@@ -12,6 +12,7 @@ Layout :
     [Voicemail]  — inventaire avec durées + paramètres
     [Annonces]   — 10 slots : interval, offset, état
     [Sécurité]   — lock, codes, auto-lock
+    [Castanara]  — surveillance relais Castanara via HTTP
     [Journal]    — log événements temps réel
   Footer : raccourcis clavier
 """
@@ -424,6 +425,173 @@ if TEXTUAL_OK:
 
 
     # ═════════════════════════════════════════════════════════════════════════
+    # Onglet Castanara — surveillance HTTP
+    # ═════════════════════════════════════════════════════════════════════════
+
+    class TabCastanara(Static):
+        """Onglet surveillance du relais Castanara via son API HTTP."""
+
+        DEFAULT_CSS = """
+        TabCastanara { padding: 1 2; }
+        TabCastanara .cast-label { color: $text-muted; width: 18; }
+        TabCastanara .cast-value { color: $text; }
+        TabCastanara .cast-tx    { color: cyan; }
+        TabCastanara .cast-ok    { color: green; }
+        TabCastanara .cast-warn  { color: yellow; }
+        TabCastanara .cast-err   { color: red; }
+        TabCastanara .cast-section { color: $accent; margin-top: 1; }
+        """
+
+        def __init__(self, url: str, rep=None, **kw):
+            super().__init__(**kw)
+            self._url  = url.rstrip("/")
+            self._rep  = rep
+            self._data: dict = {}
+
+        def compose(self) -> ComposeResult:
+            yield Static("Castanara — relais distant", classes="cast-section")
+            yield Horizontal(
+                Input(value=self._url, id="cast_url_input", placeholder="http://host:8080"),
+                Button("Connecter", id="cast_connect", variant="primary"),
+            )
+            yield Rule()
+            yield Horizontal(
+                Static("État",         classes="cast-label"),
+                Static("—",            id="cast_state", classes="cast-value"),
+            )
+            yield Horizontal(
+                Static("PTT",          classes="cast-label"),
+                Static("—",            id="cast_ptt",   classes="cast-value"),
+            )
+            yield Horizontal(
+                Static("Niveau RX",    classes="cast-label"),
+                ProgressBar(total=100, id="cast_level", show_eta=False),
+            )
+            yield Horizontal(
+                Static("DTMF",         classes="cast-label"),
+                Static("—",            id="cast_dtmf",  classes="cast-value"),
+            )
+            yield Rule()
+            yield Static("QSO", classes="cast-section")
+            yield Horizontal(
+                Static("Compteur",     classes="cast-label"),
+                Static("—",            id="cast_qso_count", classes="cast-value"),
+            )
+            yield Horizontal(
+                Static("TX total",     classes="cast-label"),
+                Static("—",            id="cast_tx_total",  classes="cast-value"),
+            )
+            yield Horizontal(
+                Static("Dernier QSO",  classes="cast-label"),
+                Static("—",            id="cast_last_qso",  classes="cast-value"),
+            )
+            yield Rule()
+            yield Static("Système", classes="cast-section")
+            yield Horizontal(
+                Static("CPU",          classes="cast-label"),
+                Static("—",            id="cast_cpu",   classes="cast-value"),
+            )
+            yield Horizontal(
+                Static("RAM",          classes="cast-label"),
+                Static("—",            id="cast_ram",   classes="cast-value"),
+            )
+            yield Horizontal(
+                Static("Température",  classes="cast-label"),
+                Static("—",            id="cast_temp",  classes="cast-value"),
+            )
+            yield Horizontal(
+                Static("Uptime",       classes="cast-label"),
+                Static("—",            id="cast_uptime", classes="cast-value"),
+            )
+            yield Rule()
+            yield Static("", id="cast_error", classes="cast-err")
+
+        def on_mount(self) -> None:
+            self.set_interval(3.0, self._refresh)
+
+        def on_button_pressed(self, event: Button.Pressed) -> None:
+            if event.button.id == "cast_connect":
+                new_url = self.query_one("#cast_url_input", Input).value.strip()
+                if new_url:
+                    self._url = new_url.rstrip("/")
+                    if self._rep is not None:
+                        self._rep.config.castanara_url = self._url
+                        try:
+                            self._rep.config.save()
+                        except Exception:
+                            pass
+                    self._refresh()
+
+        def _refresh(self) -> None:
+            import urllib.request
+            import json as _json
+
+            def _fetch(path):
+                try:
+                    with urllib.request.urlopen(
+                        f"{self._url}{path}", timeout=2
+                    ) as r:
+                        return _json.loads(r.read().decode())
+                except Exception:
+                    return None
+
+            status  = _fetch("/api/status")
+            stats   = _fetch("/api/stats")
+            sysinfo = _fetch("/api/sysinfo")
+            self.call_from_thread(self._apply, status, stats, sysinfo)
+
+        def _apply(self, status, stats, sysinfo) -> None:
+            try:
+                err = self.query_one("#cast_error", Static)
+                if status is None:
+                    err.update(f"Impossible de joindre {self._url}")
+                    return
+                err.update("")
+
+                # État / PTT / niveau
+                state  = status.get("state", "?")
+                is_tx  = status.get("is_tx", False)
+                level  = max(0.0, min(1.0, float(status.get("level", 0.0))))
+                dtmf   = status.get("dtmf", "") or "—"
+
+                tx_cls  = "cast-tx" if is_tx else "cast-ok"
+                tx_str  = "[cyan]TX[/cyan]" if is_tx else "RX"
+
+                self.query_one("#cast_state", Static).update(state)
+                self.query_one("#cast_ptt",   Static).update(tx_str)
+                self.query_one("#cast_level", ProgressBar).update(progress=int(level * 100))
+                self.query_one("#cast_dtmf",  Static).update(dtmf)
+
+                # Stats QSO
+                if stats:
+                    qso = stats.get("qso_count", 0)
+                    tx_s = int(stats.get("tx_total_seconds", 0))
+                    last = stats.get("last_qso_time")
+                    last_str = (time.strftime("%d/%m %H:%M:%S", time.localtime(last))
+                                if last else "—")
+                    self.query_one("#cast_qso_count", Static).update(str(qso))
+                    self.query_one("#cast_tx_total",  Static).update(
+                        f"{tx_s // 60}m{tx_s % 60:02d}s"
+                    )
+                    self.query_one("#cast_last_qso",  Static).update(last_str)
+
+                # Sysinfo
+                if sysinfo:
+                    cpu  = sysinfo.get("cpu_percent", "?")
+                    ram  = sysinfo.get("ram_percent", "?")
+                    temp = sysinfo.get("cpu_temp", "?")
+                    up   = int(sysinfo.get("uptime_s", 0))
+                    self.query_one("#cast_cpu",    Static).update(f"{cpu}%")
+                    self.query_one("#cast_ram",    Static).update(f"{ram}%")
+                    self.query_one("#cast_temp",   Static).update(f"{temp}°C")
+                    self.query_one("#cast_uptime", Static).update(
+                        f"{up // 3600}h{(up % 3600) // 60:02d}m{up % 60:02d}s"
+                    )
+            except Exception:
+                pass
+
+
+    # ═════════════════════════════════════════════════════════════════════════
     # Application principale
     # ═════════════════════════════════════════════════════════════════════════
 
@@ -514,6 +682,8 @@ if TEXTUAL_OK:
                     yield TabAnnonces(self.rep)
                 with TabPane("Sécurité",  id="tab_sec"):
                     yield TabSecurite(self.rep)
+                with TabPane("Castanara", id="tab_cast"):
+                    yield TabCastanara(self.rep.config.castanara_url, rep=self.rep)
                 with TabPane("Journal",   id="tab_log"):
                     self._tab_journal = TabJournal()
                     yield self._tab_journal

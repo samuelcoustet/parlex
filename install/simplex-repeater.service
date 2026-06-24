@@ -4,16 +4,29 @@ After=sound.target network.target
 Wants=sound.target
 
 [Service]
-Type=simple
+Type=notify
 User=root
 WorkingDirectory=/opt/parlex
+
 ExecStart=/opt/parlex/venv/bin/python -m parlex \
     --config /etc/parlex/config.yaml \
     --log-file /var/log/parlex.log
+
+# Watchdog : redémarre si le processus ne répond plus dans les 30s
+WatchdogSec=30
+NotifyAccess=main
+
+# Redémarrage automatique après crash ou kill
 Restart=always
 RestartSec=5
+
+# Limites ressources (RPi Zero)
+MemoryMax=256M
+CPUQuota=90%
+
 StandardOutput=journal
 StandardError=journal
+SyslogIdentifier=parlex
 
 [Install]
 WantedBy=multi-user.target
