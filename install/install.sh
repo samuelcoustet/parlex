@@ -9,7 +9,7 @@ DATA_DIR="/var/lib/parlex"
 RUN_DIR="/run/parlex"
 LOG_FILE="/var/log/parlex.log"
 
-echo "=== Installation Parlex — Relais Simplex ADS-SR1 ==="
+echo "=== Installation Parlex — relais simplex ==="
 
 # Dépendances système
 apt-get update -q

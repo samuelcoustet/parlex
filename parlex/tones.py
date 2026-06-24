@@ -1,5 +1,5 @@
 """
-tones.py — Génération des sons système ADS-SR1
+tones.py — Génération des sons système Parlex
   Courtesy tones, beeps de commande, ton 1kHz calibration, Morse CW
 """
 from __future__ import annotations
@@ -116,8 +116,8 @@ MORSE_TABLE = {
     ':': '---...', "'": '.----.', '_': '..--.-', ' ': ' ',
 }
 
-# Table encodage ADS-SR1 ##82 (00=space, 01=A ... 26=Z, 27=. 28=, 29=? 30=0 ... 39=9 40=; 41=: 42=/ 43=- 44=' 45=( 46=) 47=_)
-SR1_CHARS = " ABCDEFGHIJKLMNOPQRSTUVWXYZ.,?0123456789;:/-'()_"
+# Table encodage Parlex ##82 (00=space, 01=A ... 26=Z, 27=. 28=, 29=? 30=0 ... 39=9 40=; 41=: 42=/ 43=- 44=' 45=( 46=) 47=_)
+CW_CHARS = " ABCDEFGHIJKLMNOPQRSTUVWXYZ.,?0123456789;:/-'()_"
 
 
 def sr1_decode_cwtext(encoded: str) -> str:
@@ -126,8 +126,8 @@ def sr1_decode_cwtext(encoded: str) -> str:
     for i in range(0, len(encoded) - 1, 2):
         try:
             idx = int(encoded[i:i+2])
-            if 0 <= idx < len(SR1_CHARS):
-                chars.append(SR1_CHARS[idx])
+            if 0 <= idx < len(CW_CHARS):
+                chars.append(CW_CHARS[idx])
         except ValueError:
             pass
     return "".join(chars).strip()

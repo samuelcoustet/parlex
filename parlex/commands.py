@@ -1,5 +1,5 @@
 """
-commands.py — Parser et dispatcher des commandes DTMF ##XX ADS-SR1
+commands.py — Parser et dispatcher des commandes DTMF ##XX Parlex
 Retourne un tuple (response_tone, message) où response_tone est l'une des
 constantes CMD_OK / CMD_NEG / CMD_ERR / CMD_LOCKED.
 """
@@ -535,7 +535,7 @@ class CommandParser:
 
     def _parse_time(self, s: str) -> Optional[float]:
         """
-        Interprète le format temps ADS-SR1 :
+        Interprète le format temps Parlex :
         - 2 digits → minutes
         - 3 digits → secondes
         - 4 digits → HHMM (heures+minutes)

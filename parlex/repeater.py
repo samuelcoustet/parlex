@@ -1,5 +1,5 @@
 """
-repeater.py — Machine d'états principale du relais simplex ADS-SR1
+repeater.py — Machine d'états principale du relais simplex
 
 États:
   IDLE        : écoute, détection VOX/COR, décodage DTMF
@@ -454,7 +454,7 @@ class SimplexRepeater:
             threading.Thread(target=self._tx_cw_id, daemon=True).start()
 
         elif tone_type == "FW_ID":
-            cw = generate_cw(f"SR1 {FW_REVISION}", speed=cfg.cw_speed, freq=float(cfg.cw_freq))
+            cw = generate_cw(f"PARLEX {FW_REVISION}", speed=cfg.cw_speed, freq=float(cfg.cw_freq))
             self._key_up()
             self.playback.play_numpy(cw)
             self._key_down()
@@ -680,7 +680,7 @@ class SimplexRepeater:
     def _set_output_pin(self, pin: int, state: bool) -> None:
         try:
             import RPi.GPIO as GPIO
-            # Pins JP2 ADS-SR1 : pin 0 → GPIO 23, pin 1 → GPIO 24 (à adapter)
+            # Pins JP2 Parlex : pin 0 → GPIO 23, pin 1 → GPIO 24 (à adapter)
             GPIO_MAP = {0: 23, 1: 24}
             if pin in GPIO_MAP:
                 GPIO.setmode(GPIO.BCM)

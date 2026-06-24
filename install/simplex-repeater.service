@@ -1,5 +1,5 @@
 [Unit]
-Description=Parlex — Relais Simplex ADS-SR1 (RPi Zero + AIOC)
+Description=Parlex — relais simplex (RPi Zero + AIOC)
 After=sound.target network.target
 Wants=sound.target
 

@@ -1,5 +1,5 @@
 """
-tui.py — TUI complète pour le relais simplex ADS-SR1
+tui.py — TUI complète pour le relais simplex
 Basée sur Textual ≥ 0.50. Fallback curses si textual absent.
 
 Layout :
@@ -110,7 +110,7 @@ if TEXTUAL_OK:
     # ═════════════════════════════════════════════════════════════════════════
 
     class TabRepeater(Static):
-        """Onglet Relais — paramètres store-and-forward ADS-SR1."""
+        """Onglet Relais — paramètres store-and-forward Parlex."""
 
         def __init__(self, rep: "SimplexRepeater", **kw):
             super().__init__(**kw)
@@ -428,7 +428,7 @@ if TEXTUAL_OK:
     # ═════════════════════════════════════════════════════════════════════════
 
     class RepeaterTUI(App):
-        TITLE = "Relais Simplex ADS-SR1 — RPi Zero + AIOC"
+        TITLE = "relais simplex — RPi Zero + AIOC"
 
         CSS = """
         Screen { layout: vertical; background: $background; }
@@ -712,7 +712,7 @@ def run_curses_tui(repeater: "SimplexRepeater") -> None:
                 cp    = curses.color_pair(STATE_CP.get(state, 6))
 
                 # ── Ligne 0 : titre ──────────────────────────────────────
-                title = " Relais Simplex ADS-SR1 — RPi Zero + AIOC "
+                title = " relais simplex — RPi Zero + AIOC "
                 stdscr.addstr(0, max(0, (w - len(title)) // 2), title[:w], curses.A_BOLD)
 
                 # ── Ligne 1 : état + PTT + VU ────────────────────────────

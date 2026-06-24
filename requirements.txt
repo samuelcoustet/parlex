@@ -1,4 +1,4 @@
-# Relais simplex ADS-SR1 — RPi Zero + AIOC
+# relais simplex — RPi Zero + AIOC
 # Installer avec: pip install -r requirements.txt
 
 # Audio (identique projet Castanara)

@@ -1,5 +1,5 @@
 """
-main.py — CLI complète du relais simplex ADS-SR1
+main.py — CLI complète du relais simplex
 
 Commandes :
   simplex-repeater run [--tui|--curses] [--config PATH] [--log-level X] [--log-file PATH]
@@ -84,7 +84,7 @@ def cmd_status(args) -> None:
     live = _read_status()
 
     print(_hr())
-    print(" Relais Simplex ADS-SR1 — RPi Zero + AIOC")
+    print(" relais simplex — RPi Zero + AIOC")
     print(_hr())
 
     # État live si daemon tourne
@@ -421,7 +421,7 @@ def _add_config_arg(p) -> None:
 def build_parser() -> argparse.ArgumentParser:
     root = argparse.ArgumentParser(
         prog="simplex-repeater",
-        description="Relais simplex ADS-SR1 — RPi Zero + AIOC",
+        description="relais simplex — RPi Zero + AIOC",
     )
     sub = root.add_subparsers(dest="command", metavar="<commande>")
 
@@ -462,7 +462,7 @@ def build_parser() -> argparse.ArgumentParser:
     sc_set.add_argument("value")
     sc_set.set_defaults(func=cmd_config_set)
 
-    sc_reset = sub_cfg.add_parser("reset", help="Valeurs usine ADS-SR1")
+    sc_reset = sub_cfg.add_parser("reset", help="Valeurs usine Parlex")
     sc_reset.set_defaults(func=cmd_config_reset)
 
     def _cfg_dispatch(args):

@@ -1,6 +1,6 @@
-# Relais Simplex ADS-SR1 — RPi Zero + AIOC
+# relais simplex — RPi Zero + AIOC
 
-Clone logiciel 1:1 du relais simplex **Argent Data Systems SR-1 Mk II**,
+Clone logiciel 1:1 du relais simplex **relais simplex store-and-forward**,
 implémenté en Python sur **Raspberry Pi Zero** avec **AIOC** (AllInOneCable)
 comme interface audio/PTT.
 
@@ -130,7 +130,7 @@ parlex config set tx_gain 3.5
 parlex config set cw_id_text "F4XYZ/R"
 parlex config set courtesy_tone 1
 
-# Remettre aux valeurs usine ADS-SR1
+# Remettre aux valeurs usine Parlex
 parlex config reset
 ```
 
@@ -445,13 +445,13 @@ immédiatement.
 ```
 parlex/
 ├── main.py          CLI (subcommands argparse), daemon, écriture status.json
-├── config.py        RepeaterConfig dataclass, valeurs ADS-SR1, persistance YAML
+├── config.py        RepeaterConfig dataclass, valeurs Parlex, persistance YAML
 ├── repeater.py      Machine à états principale (IDLE→RECORD→TX→COOLDOWN)
 ├── audio.py         ALSACapture (sounddevice), ALSAPlayback, VOXDetector,
 │                    Recorder (pre-buffer 0.5s), QSOStats, apply_ctcss()
 ├── ptt.py           PTTController (DTR série), CORMonitor (GPIO)
 ├── dtmf.py          DTMFDecoder (FFT+Hamming, debounce 3-hits, gap 0.5s)
-├── commands.py      CommandParser (## DTMF ADS-SR1), dispatch commandes
+├── commands.py      CommandParser (## DTMF Parlex), dispatch commandes
 ├── tones.py         Courtesy tones, CW Morse, bips système, calibration
 ├── storage.py       AnnouncementStore, VoicemailStore, SayAgainBuffer
 ├── announcements.py AnnouncementEngine (threading.Timer, offsets)

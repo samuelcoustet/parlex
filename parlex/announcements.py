@@ -1,5 +1,5 @@
 """
-announcements.py — Moteur de diffusion des annonces temporisées (ADS-SR1 §##5n/##6n)
+announcements.py — Moteur de diffusion des annonces temporisées (Parlex §##5n/##6n)
 Un timer par slot (0-9). Tourne en daemon thread.
 """
 from __future__ import annotations

@@ -5,7 +5,7 @@ build-backend = "setuptools.backends.legacy:build"
 [project]
 name = "parlex"
 version = "1.0.0"
-description = "Clone logiciel du relais simplex ADS-SR1 Mk II — RPi Zero + AIOC"
+description = "Clone logiciel du relais simplex — RPi Zero + AIOC"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10"

@@ -1,4 +1,4 @@
-"""parlex — Relais simplex ADS-SR1 sur RPi Zero + AIOC"""
+"""parlex — relais simplex sur RPi Zero + AIOC"""
 from .repeater import SimplexRepeater, State
 from .config import RepeaterConfig
 

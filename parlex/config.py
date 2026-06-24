@@ -1,5 +1,5 @@
 """
-config.py — Settings ADS-SR1, valeurs défaut fidèles au manuel (rev Mk II)
+config.py — Settings Parlex, valeurs défaut fidèles au manuel (rev Mk II)
 Persistance YAML. Toutes les unités sont en secondes sauf mention contraire.
 """
 from __future__ import annotations
@@ -14,7 +14,7 @@ DATA_DIR    = Path("/var/lib/parlex")
 # ─── Courtesy tones ───────────────────────────────────────────────────────────
 COURTESY_TONES = {
     0: "none",
-    1: "rising_triple",   # défaut ADS-SR1
+    1: "rising_triple",   # défaut Parlex
     2: "high_high_low_low",
     3: "high_low",
     4: "low_high",
@@ -45,12 +45,12 @@ class RepeaterConfig:
     # ── VOX ────────────────────────────────────────────────────────────────
     vox_threshold:      float = 0.02       # RMS fraction de full-scale (0-1)
     vox_timeout:        float = 2.0        # ##13 défaut 2s
-    squelch_tail_supp:  float = 0.0        # ##79 (×1/75 s dans ADS-SR1)
+    squelch_tail_supp:  float = 0.0        # ##79 (×1/75 s dans Parlex)
 
     # ── Repeater logic ─────────────────────────────────────────────────────
     repeater_on:       bool  = True        # ##70/##71
     say_again_on:      bool  = True        # ##14
-    min_tx_time:       float = 0.2         # ##19 (1/10 s units dans ADS-SR1)
+    min_tx_time:       float = 0.2         # ##19 (1/10 s units dans Parlex)
     max_tx_time:       float = 0.0         # ##17 (0=disabled)
     cooldown_time:     float = 0.0         # ##18 (0=disabled)
     tx_delay:          float = 0.5         # ##92 délai PTT→audio
