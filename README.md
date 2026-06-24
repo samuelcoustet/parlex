@@ -11,6 +11,8 @@ avec **[AIOC (AllInOneCable)](https://github.com/skuep/AIOC)** comme interface a
 
 1. [Matériel requis](#matériel-requis)
 2. [Installation](#installation)
+   - [Paquet Debian (recommandé)](#paquet-debian-recommandé)
+   - [Script d'installation](#script-dinstallation)
 3. [Démarrage rapide](#démarrage-rapide)
 4. [CLI — référence complète](#cli--référence-complète)
 5. [Commandes DTMF](#commandes-dtmf)
@@ -18,8 +20,9 @@ avec **[AIOC (AllInOneCable)](https://github.com/skuep/AIOC)** comme interface a
 7. [Voicemail](#voicemail)
 8. [Annonces programmées](#annonces-programmées)
 9. [Interface TUI](#interface-tui)
-10. [Architecture logicielle](#architecture-logicielle)
-11. [Dépendances](#dépendances)
+10. [Accès distant](#accès-distant)
+11. [Architecture logicielle](#architecture-logicielle)
+12. [Dépendances](#dépendances)
 
 ---
 
@@ -33,52 +36,71 @@ avec **[AIOC (AllInOneCable)](https://github.com/skuep/AIOC)** comme interface a
 | Carte micro-SD ≥ 8 Go | Raspberry Pi OS Lite |
 
 **Connexions AIOC :**
-- Audio RX → `aioc_shared` (dsnoop ALSA)
-- Audio TX → `plug:aioc_hw` (ALSA exclusif)
+- Audio RX → `aioc_capture` (dsnoop ALSA)
+- Audio TX → `aioc_playback` (ALSA)
 - PTT → signal DTR sur `/dev/ttyACM0`
 
 ---
 
 ## Installation
 
+### Paquet Debian (recommandé)
+
+Construit le `.deb` sur votre machine de développement (Linux ou RPi OS) :
+
 ```bash
-# 1. Cloner le dépôt
-git clone https://github.com/samuelcoustet/parlex /opt/parlex
-cd /opt/parlex
+git clone https://github.com/samuelcoustet/parlex
+cd parlex
+bash package/build_deb.sh
+# → dist/parlex_1.0.0_all.deb
+```
 
-# 2. Installer les dépendances Python
-pip install -r requirements.txt
-# sounddevice, pyserial, pyyaml, numpy, textual
+Transférez et installez sur le Pi :
 
-# 3. Déployer le service systemd
-sudo bash install/install.sh
-
-# 4. Activer et démarrer
-sudo systemctl enable parlex
+```bash
+scp dist/parlex_1.0.0_all.deb pi@<ip>:~/
+ssh pi@<ip> sudo dpkg -i parlex_1.0.0_all.deb
 sudo systemctl start parlex
 ```
 
-### Configuration ALSA requise (`/etc/asound.conf`)
+Le `postinst` s'occupe de tout : création du virtualenv, installation des dépendances pip, détection automatique de l'AIOC, génération de la config et activation du service systemd.
 
+Pour désinstaller :
+
+```bash
+sudo apt remove parlex       # conserve /etc/parlex/config.yaml
+sudo apt purge parlex        # supprime tout
 ```
-pcm.aioc_hw {
-    type hw
-    card AIOC
-    device 0
-}
-pcm.aioc_shared {
-    type dsnoop
-    ipc_key 2048
-    slave { pcm aioc_hw; rate 48000; channels 1; }
-}
+
+---
+
+### Script d'installation
+
+Alternative si vous travaillez directement sur le Pi :
+
+```bash
+git clone https://github.com/samuelcoustet/parlex /opt/parlex
+cd /opt/parlex
+sudo bash install/install.sh
 ```
+
+Le script :
+1. Installe les paquets système (`python3-venv`, `alsa-utils`, `python3-serial`…)
+2. **Détecte automatiquement l'AIOC** (USB VID=0483 / PID=a30c) via `udevadm`
+3. Génère `/etc/asound.conf` avec les bonnes entrées `dsnoop` / `dmix`
+4. Crée le virtualenv Python dans `/opt/parlex/venv`
+5. Génère `/etc/parlex/config.yaml` avec le port série et la carte ALSA détectés
+6. Active le service systemd `parlex.service` (redémarrage automatique + watchdog)
+7. **Propose l'installation de Tailscale** pour l'accès distant sécurisé
+
+Si l'AIOC n'est pas branché au moment de l'installation, le script demande confirmation et vous indique les paramètres à renseigner manuellement dans `/etc/parlex/config.yaml`.
 
 ---
 
 ## Démarrage rapide
 
 ```bash
-parlex run                  # daemon mode texte
+parlex run                  # mode daemon texte
 parlex run --tui            # interface Textual (recommandé)
 parlex run --curses         # interface curses (RPi sans X)
 parlex status               # état + configuration complète
@@ -143,6 +165,25 @@ parlex announce set 0 3600             # slot 0 : toutes les heures
 parlex announce set 1 7200 300         # slot 1 : toutes les 2h, offset +5 min
 parlex announce set 2 0                # désactiver le timer du slot 2
 parlex announce erase 3                # effacer le fichier audio du slot 3
+```
+
+---
+
+### Surveillance relais distant
+
+```bash
+parlex remote                          # état du relais distant (URL depuis config)
+parlex remote --url http://192.168.1.10:8080   # URL explicite
+parlex remote --watch                  # mode watch : rafraîchit toutes les 2 s
+```
+
+Affiche : état machine, PTT, niveau RX, DTMF, stats QSO, CPU/RAM/température/uptime.
+
+L'URL peut être configurée de façon permanente :
+
+```bash
+parlex config set remote_url http://192.168.1.10:8080
+parlex config set remote_enabled true
 ```
 
 ---
@@ -241,7 +282,7 @@ Le relais répond par un bip de confirmation (OK / négatif / erreur / verrouill
 
 ### Voicemail (mode VM_PLAYBACK)
 
-Une fois en mode écoute (`##02` ou `*` + code), les touches suivantes naviguent :
+Accès via `##02` ou `*` + code voicemail.
 
 | Touche | Description |
 |---|---|
@@ -282,8 +323,8 @@ Modifiables via `parlex config set` ou via la TUI.
 
 | Paramètre | Défaut | Description |
 |---|---|---|
-| `alsa_capture` | `aioc_shared` | Périphérique ALSA entrée (dsnoop) |
-| `alsa_playback` | `plug:aioc_hw` | Périphérique ALSA sortie |
+| `alsa_capture` | `plughw:AIOC,0` | Périphérique ALSA entrée |
+| `alsa_playback` | `plughw:AIOC,0` | Périphérique ALSA sortie |
 | `sample_rate` | `48000` | Fréquence d'échantillonnage Hz |
 | `serial_port` | `/dev/ttyACM0` | Port série AIOC (PTT DTR) |
 | `tx_gain` | `3.5` | Multiplicateur gain TX (peut dépasser 1,0) |
@@ -340,6 +381,13 @@ Modifiables via `parlex config set` ou via la TUI.
 | `voice_id_rotate` | `false` | Rotation entre les slots d'annonces |
 | `voice_preamble` | `false` | Preamble avant chaque TX |
 
+### Relais distant
+
+| Paramètre | Défaut | Description |
+|---|---|---|
+| `remote_url` | `http://localhost:8080` | URL du dashboard du relais distant |
+| `remote_enabled` | `false` | Surveillance active |
+
 ---
 
 ## Voicemail
@@ -377,7 +425,7 @@ Barre d'état permanente :
 ▶ IDLE              ○ PTT   ████░░░░░░░░  DTMF: ##70____   QSO: 5  TX: 2m30s
 ```
 
-7 onglets (navigation `Tab`) :
+8 onglets (navigation `Tab`) :
 
 | Onglet | Contenu |
 |---|---|
@@ -387,9 +435,43 @@ Barre d'état permanente :
 | **Voicemail** | Inventaire durées/dates + paramètres |
 | **Annonces** | 10 slots : état, durée, timer, offset |
 | **Sécurité** | Lock, codes, stats QSO session |
+| **Relais distant** | Surveillance HTTP : état, PTT, niveau, DTMF, QSO, sysinfo |
 | **Journal** | Log événements temps réel |
 
 Raccourcis : `q` quitter · `s` sauvegarder · `r` rafraîchir.
+
+---
+
+## Accès distant
+
+### Tailscale (recommandé)
+
+[Tailscale](https://tailscale.com) crée un VPN mesh privé entre vos appareils, sans ouvrir de ports sur le routeur. Proposé automatiquement en fin d'installation.
+
+Installation manuelle :
+
+```bash
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up
+```
+
+Après authentification, le Pi est joignable depuis n'importe où :
+
+```bash
+ssh pi@<nom-du-pi>.tail.net
+parlex remote --url http://<nom-du-pi>.tail.net:8080
+```
+
+### Service systemd avec watchdog
+
+Le service `parlex.service` utilise `Type=notify` et `WatchdogSec=30`.
+Systemd redémarre automatiquement le daemon s'il ne répond plus dans les 30 secondes.
+
+```bash
+systemctl status parlex          # état + uptime
+journalctl -u parlex -f          # logs en direct
+systemctl restart parlex         # redémarrage manuel
+```
 
 ---
 
@@ -397,7 +479,7 @@ Raccourcis : `q` quitter · `s` sauvegarder · `r` rafraîchir.
 
 ```
 parlex/
-├── main.py          CLI (argparse subcommands), daemon, status.json
+├── main.py          CLI (argparse subcommands), daemon, status.json, watchdog sd_notify
 ├── config.py        RepeaterConfig dataclass, persistance YAML
 ├── repeater.py      Machine à états (IDLE→RECORDING→TRANSMITTING→COOLDOWN)
 ├── audio.py         ALSACapture (sounddevice), VOXDetector, Recorder (pre-buffer 0.5 s)
@@ -407,7 +489,20 @@ parlex/
 ├── tones.py         Courtesy tones, CW Morse, bips système
 ├── storage.py       AnnouncementStore, VoicemailStore, SayAgainBuffer
 ├── announcements.py AnnouncementEngine (threading.Timer, offsets)
-└── tui.py           RepeaterTUI (Textual 7 onglets) + fallback curses
+└── tui.py           RepeaterTUI (Textual 8 onglets) + fallback curses
+
+install/
+├── install.sh              Script d'installation (détection AIOC, asound.conf, systemd)
+└── simplex-repeater.service Unité systemd (Type=notify, WatchdogSec=30)
+
+package/
+├── build_deb.sh            Construit dist/parlex_*.deb
+└── DEBIAN/
+    ├── control             Métadonnées paquet
+    ├── conffiles           /etc/parlex/config.yaml préservé aux upgrades
+    ├── postinst            Venv, pip, AIOC detect, systemctl enable
+    ├── prerm               systemctl stop/disable
+    └── postrm              Purge complète
 ```
 
 Chaîne audio :
@@ -457,6 +552,8 @@ No external sound card or PTT circuit required.
 
 1. [Hardware](#hardware)
 2. [Installation](#installation-1)
+   - [Debian package (recommended)](#debian-package-recommended)
+   - [Install script](#install-script)
 3. [Quick Start](#quick-start)
 4. [CLI Reference](#cli-reference)
 5. [DTMF Commands](#dtmf-commands)
@@ -464,8 +561,9 @@ No external sound card or PTT circuit required.
 7. [Voicemail](#voicemail-1)
 8. [Timed Announcements](#timed-announcements)
 9. [TUI Interface](#tui-interface)
-10. [Software Architecture](#software-architecture)
-11. [Dependencies](#dependencies)
+10. [Remote Access](#remote-access)
+11. [Software Architecture](#software-architecture)
+12. [Dependencies](#dependencies)
 
 ---
 
@@ -479,45 +577,64 @@ No external sound card or PTT circuit required.
 | micro-SD card ≥ 8 GB | Raspberry Pi OS Lite |
 
 **AIOC connections:**
-- Audio RX → `aioc_shared` (ALSA dsnoop)
-- Audio TX → `plug:aioc_hw` (ALSA exclusive)
+- Audio RX → `aioc_capture` (ALSA dsnoop)
+- Audio TX → `aioc_playback` (ALSA)
 - PTT → DTR signal on `/dev/ttyACM0`
 
 ---
 
 ## Installation
 
+### Debian package (recommended)
+
+Build the `.deb` on your development machine (Linux or RPi OS):
+
 ```bash
-# 1. Clone the repository
-git clone https://github.com/samuelcoustet/parlex /opt/parlex
-cd /opt/parlex
+git clone https://github.com/samuelcoustet/parlex
+cd parlex
+bash package/build_deb.sh
+# → dist/parlex_1.0.0_all.deb
+```
 
-# 2. Install Python dependencies
-pip install -r requirements.txt
-# sounddevice, pyserial, pyyaml, numpy, textual
+Transfer and install on the Pi:
 
-# 3. Deploy the systemd service
-sudo bash install/install.sh
-
-# 4. Enable and start
-sudo systemctl enable parlex
+```bash
+scp dist/parlex_1.0.0_all.deb pi@<ip>:~/
+ssh pi@<ip> sudo dpkg -i parlex_1.0.0_all.deb
 sudo systemctl start parlex
 ```
 
-### Required ALSA configuration (`/etc/asound.conf`)
+The `postinst` script handles everything: virtualenv creation, pip dependencies, AIOC autodetection, default config, and systemd service activation.
 
+To uninstall:
+
+```bash
+sudo apt remove parlex       # keeps /etc/parlex/config.yaml
+sudo apt purge parlex        # removes everything
 ```
-pcm.aioc_hw {
-    type hw
-    card AIOC
-    device 0
-}
-pcm.aioc_shared {
-    type dsnoop
-    ipc_key 2048
-    slave { pcm aioc_hw; rate 48000; channels 1; }
-}
+
+---
+
+### Install script
+
+Alternative for working directly on the Pi:
+
+```bash
+git clone https://github.com/samuelcoustet/parlex /opt/parlex
+cd /opt/parlex
+sudo bash install/install.sh
 ```
+
+The script:
+1. Installs system packages (`python3-venv`, `alsa-utils`, `python3-serial`…)
+2. **Auto-detects the AIOC** (USB VID=0483 / PID=a30c) via `udevadm`
+3. Generates `/etc/asound.conf` with correct `dsnoop` / `dmix` entries
+4. Creates the Python virtualenv in `/opt/parlex/venv`
+5. Writes `/etc/parlex/config.yaml` with detected serial port and ALSA card
+6. Enables the `parlex.service` systemd unit (auto-restart + watchdog)
+7. **Optionally installs Tailscale** for secure remote access
+
+If the AIOC is not connected at install time, the script asks for confirmation and tells you which parameters to set manually in `/etc/parlex/config.yaml`.
 
 ---
 
@@ -589,6 +706,25 @@ parlex announce set 0 3600             # slot 0: every hour
 parlex announce set 1 7200 300         # slot 1: every 2 h, +5 min offset
 parlex announce set 2 0                # disable slot 2 timer
 parlex announce erase 3                # erase audio file from slot 3
+```
+
+---
+
+### Remote relay monitoring
+
+```bash
+parlex remote                          # status of remote relay (URL from config)
+parlex remote --url http://192.168.1.10:8080   # explicit URL
+parlex remote --watch                  # watch mode: refreshes every 2 s
+```
+
+Displays: machine state, PTT, RX level, DTMF, QSO stats, CPU/RAM/temperature/uptime.
+
+Set the URL permanently:
+
+```bash
+parlex config set remote_url http://192.168.1.10:8080
+parlex config set remote_enabled true
 ```
 
 ---
@@ -728,8 +864,8 @@ Editable via `parlex config set` or through the TUI.
 
 | Parameter | Default | Description |
 |---|---|---|
-| `alsa_capture` | `aioc_shared` | ALSA input device (dsnoop) |
-| `alsa_playback` | `plug:aioc_hw` | ALSA output device |
+| `alsa_capture` | `plughw:AIOC,0` | ALSA input device |
+| `alsa_playback` | `plughw:AIOC,0` | ALSA output device |
 | `sample_rate` | `48000` | Sample rate in Hz |
 | `serial_port` | `/dev/ttyACM0` | AIOC serial port (PTT DTR) |
 | `tx_gain` | `3.5` | TX gain multiplier (can exceed 1.0) |
@@ -786,6 +922,13 @@ Editable via `parlex config set` or through the TUI.
 | `voice_id_rotate` | `false` | Rotate through announcement slots |
 | `voice_preamble` | `false` | Play preamble before each TX |
 
+### Remote relay
+
+| Parameter | Default | Description |
+|---|---|---|
+| `remote_url` | `http://localhost:8080` | Remote relay dashboard URL |
+| `remote_enabled` | `false` | Enable monitoring |
+
 ---
 
 ## Voicemail
@@ -823,7 +966,7 @@ Persistent status bar:
 ▶ IDLE              ○ PTT   ████░░░░░░░░  DTMF: ##70____   QSO: 5  TX: 2m30s
 ```
 
-7 tabs (navigate with `Tab`):
+8 tabs (navigate with `Tab`):
 
 | Tab | Content |
 |---|---|
@@ -833,9 +976,43 @@ Persistent status bar:
 | **Voicemail** | Message inventory with durations + access settings |
 | **Announcements** | 10 slots: state, duration, timer, offset |
 | **Security** | Lock, codes, QSO session stats |
+| **Remote relay** | HTTP monitoring: state, PTT, level, DTMF, QSO, sysinfo |
 | **Log** | Live event log |
 
 Keyboard shortcuts: `q` quit · `s` save · `r` refresh.
+
+---
+
+## Remote Access
+
+### Tailscale (recommended)
+
+[Tailscale](https://tailscale.com) creates a private mesh VPN between your devices with no router port-forwarding required. Offered automatically at the end of the install script.
+
+Manual installation:
+
+```bash
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up
+```
+
+After authentication, the Pi is reachable from anywhere:
+
+```bash
+ssh pi@<pi-name>.tail.net
+parlex remote --url http://<pi-name>.tail.net:8080
+```
+
+### Systemd watchdog
+
+The `parlex.service` unit uses `Type=notify` and `WatchdogSec=30`.
+Systemd automatically restarts the daemon if it stops responding within 30 seconds.
+
+```bash
+systemctl status parlex          # status + uptime
+journalctl -u parlex -f          # live logs
+systemctl restart parlex         # manual restart
+```
 
 ---
 
@@ -843,7 +1020,7 @@ Keyboard shortcuts: `q` quit · `s` save · `r` refresh.
 
 ```
 parlex/
-├── main.py          CLI (argparse subcommands), daemon, status.json writer
+├── main.py          CLI (argparse subcommands), daemon, status.json, watchdog sd_notify
 ├── config.py        RepeaterConfig dataclass, YAML persistence
 ├── repeater.py      State machine (IDLE→RECORDING→TRANSMITTING→COOLDOWN)
 ├── audio.py         ALSACapture (sounddevice), VOXDetector, Recorder (0.5 s pre-buffer)
@@ -853,7 +1030,20 @@ parlex/
 ├── tones.py         Courtesy tones, CW Morse, system beeps
 ├── storage.py       AnnouncementStore, VoicemailStore, SayAgainBuffer
 ├── announcements.py AnnouncementEngine (threading.Timer, offsets)
-└── tui.py           RepeaterTUI (Textual 7 tabs) + curses fallback
+└── tui.py           RepeaterTUI (Textual 8 tabs) + curses fallback
+
+install/
+├── install.sh              Install script (AIOC detection, asound.conf, systemd)
+└── simplex-repeater.service Systemd unit (Type=notify, WatchdogSec=30)
+
+package/
+├── build_deb.sh            Builds dist/parlex_*.deb
+└── DEBIAN/
+    ├── control             Package metadata
+    ├── conffiles           /etc/parlex/config.yaml preserved on upgrade
+    ├── postinst            Venv, pip, AIOC detect, systemctl enable
+    ├── prerm               systemctl stop/disable
+    └── postrm              Full purge
 ```
 
 Audio chain:
