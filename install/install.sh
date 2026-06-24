@@ -310,3 +310,40 @@ echo ""
 echo "Config  : $CONFIG_DIR/config.yaml"
 echo "Données : $DATA_DIR"
 echo "Logs    : $LOG_FILE"
+
+# ─────────────────────────────────────────────────────────────
+# Proposition Tailscale (accès distant sécurisé)
+# ─────────────────────────────────────────────────────────────
+echo ""
+echo "─────────────────────────────────────────────────────────"
+echo " Tailscale — accès distant sécurisé (VPN mesh)"
+echo "─────────────────────────────────────────────────────────"
+echo " Tailscale permet d'accéder au relais depuis n'importe"
+echo " où via un réseau VPN privé, sans ouvrir de port."
+echo " Utile pour : SSH, parlex remote, monitoring web."
+echo ""
+read -r -p " Installer Tailscale maintenant ? [o/N] " answer
+case "$answer" in
+    [oOyY])
+        echo ""
+        echo "--- Installation de Tailscale ---"
+        curl -fsSL https://tailscale.com/install.sh | sh
+        systemctl enable --now tailscaled
+        echo ""
+        echo "  [OK] Tailscale installé et activé."
+        echo ""
+        echo "  Connectez ce Pi à votre réseau Tailscale :"
+        echo "    tailscale up"
+        echo ""
+        echo "  Puis depuis n'importe quelle machine du réseau :"
+        echo "    ssh pi@<nom-du-pi>.tail.net"
+        echo "    parlex remote --url http://<nom-du-pi>.tail.net:8080"
+        echo ""
+        ;;
+    *)
+        echo ""
+        echo "  Tailscale non installé."
+        echo "  Pour l'installer plus tard : curl -fsSL https://tailscale.com/install.sh | sh"
+        echo ""
+        ;;
+esac
