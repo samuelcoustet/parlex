@@ -1,0 +1,20 @@
+# Relais simplex ADS-SR1 — RPi Zero + AIOC
+# Installer avec: pip install -r requirements.txt
+
+# Audio (identique projet Castanara)
+sounddevice>=0.4.6
+
+# Série PTT AIOC (DTR)
+pyserial>=3.5
+
+# YAML config
+pyyaml>=6.0
+
+# Numpy (VOX, DTMF Goertzel/FFT, CW, tones)
+numpy>=1.21.0
+
+# TUI principale (optionnel, fallback curses disponible)
+textual>=0.50.0
+
+# GPIO RPi (optionnel, seulement si COR hardware)
+# RPi.GPIO>=0.7.0

@@ -1,0 +1,31 @@
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+.eggs/
+*.egg
+
+# Données runtime (stockées sur le RPi, pas dans le dépôt)
+*.wav
+*.json
+/config.yaml
+
+# Logs
+*.log
+
+# Éditeurs
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation PDF source (trop lourd pour git)
+documentation/*.pdf

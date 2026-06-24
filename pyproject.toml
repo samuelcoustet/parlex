@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "parlex"
+version = "1.0.0"
+description = "Clone logiciel du relais simplex ADS-SR1 Mk II — RPi Zero + AIOC"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dependencies = [
+    "sounddevice>=0.4.6",
+    "pyserial>=3.5",
+    "pyyaml>=6.0",
+    "numpy>=1.21",
+]
+
+[project.optional-dependencies]
+tui = ["textual>=0.50.0"]
+
+[project.scripts]
+parlex = "parlex.main:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["parlex*"]

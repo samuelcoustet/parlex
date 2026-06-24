@@ -1,0 +1,19 @@
+[Unit]
+Description=Parlex — Relais Simplex ADS-SR1 (RPi Zero + AIOC)
+After=sound.target network.target
+Wants=sound.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/parlex
+ExecStart=/opt/parlex/venv/bin/python -m parlex \
+    --config /etc/parlex/config.yaml \
+    --log-file /var/log/parlex.log
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
