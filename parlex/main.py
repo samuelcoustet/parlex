@@ -15,7 +15,7 @@ Commandes :
   simplex-repeater announce list
   simplex-repeater announce set <slot> <interval_s> [<offset_s>]
   simplex-repeater announce erase <slot>
-  simplex-repeater castanara [--url URL] [--watch]
+  simplex-repeater remote [--url URL] [--watch]
 
 Le daemon écrit /run/parlex/status.json toutes les 2s.
 Les commandes status/stats le lisent si le daemon tourne.
@@ -442,10 +442,10 @@ def cmd_run(args) -> None:
     rep.stop()
 
 
-# ─── Castanara monitoring ─────────────────────────────────────────────────────
+# ─── Surveillance relais distant ─────────────────────────────────────────────
 
-def _castanara_fetch(url: str, path: str, timeout: float = 3.0) -> dict | None:
-    """Interroge le dashboard Castanara via HTTP."""
+def _remote_fetch(url: str, path: str, timeout: float = 3.0) -> dict | None:
+    """Interroge le dashboard du relais distant via HTTP."""
     import urllib.request, urllib.error
     try:
         with urllib.request.urlopen(f"{url.rstrip('/')}{path}", timeout=timeout) as r:
@@ -454,22 +454,22 @@ def _castanara_fetch(url: str, path: str, timeout: float = 3.0) -> dict | None:
         return None
 
 
-def cmd_castanara(args) -> None:
+def cmd_remote(args) -> None:
     cfg, _ = _load_cfg(args)
-    url = getattr(args, "url", None) or cfg.castanara_url
+    url = getattr(args, "url", None) or cfg.remote_url
 
     print(_hr())
-    print(f" Castanara — {url}")
+    print(f" Relais distant — {url}")
     print(_hr())
 
-    status  = _castanara_fetch(url, "/api/status")
-    stats   = _castanara_fetch(url, "/api/stats")
-    sysinfo = _castanara_fetch(url, "/api/sysinfo")
+    status  = _remote_fetch(url, "/api/status")
+    stats   = _remote_fetch(url, "/api/stats")
+    sysinfo = _remote_fetch(url, "/api/sysinfo")
 
     if status is None:
         print(f"  Impossible de joindre {url}")
-        print("  Vérifiez que le daemon Castanara tourne et que l'URL est correcte.")
-        print(f"  Configurer : parlex config set castanara_url {url}")
+        print("  Vérifiez que le daemon du relais distant tourne et que l'URL est correcte.")
+        print(f"  Configurer : parlex config set remote_url {url}")
         sys.exit(1)
 
     # État
@@ -517,7 +517,7 @@ def cmd_castanara(args) -> None:
         try:
             while True:
                 time.sleep(2)
-                st = _castanara_fetch(url, "/api/status")
+                st = _remote_fetch(url, "/api/status")
                 if st:
                     lvl   = st.get("level", 0.0)
                     b     = "█" * int(lvl * bar_w) + "░" * (bar_w - int(lvl * bar_w))
@@ -638,15 +638,15 @@ def build_parser() -> argparse.ArgumentParser:
             args.func(args)
     p_ann.set_defaults(func=_ann_dispatch)
 
-    # ── castanara ─────────────────────────────────────────────────────────────
-    p_cast = sub.add_parser("castanara",
-                            help="Surveillance du relais Castanara (HTTP API)")
+    # ── remote ─────────────────────────────────────────────────────────────
+    p_cast = sub.add_parser("remote",
+                            help="Surveillance du relais distant (HTTP API)")
     _add_config_arg(p_cast)
     p_cast.add_argument("--url",   default=None,
-                        help="URL du dashboard Castanara (ex: http://castanara.local:8080)")
+                        help="URL du relais distant (ex: http://relais.local:8080)")
     p_cast.add_argument("--watch", action="store_true",
                         help="Mode watch : rafraîchit en continu")
-    p_cast.set_defaults(func=cmd_castanara)
+    p_cast.set_defaults(func=cmd_remote)
 
     return root
 

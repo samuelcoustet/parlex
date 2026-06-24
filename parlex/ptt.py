@@ -1,6 +1,6 @@
 """
 ptt.py — Contrôle PTT via AIOC (DTR série) + lecture COR/squelch (GPIO optionnel)
-Flags série identiques au projet Castanara : dsrdtr=False, rtscts=False
+Flags série identiques au projet : dsrdtr=False, rtscts=False
 """
 from __future__ import annotations
 import logging
@@ -14,7 +14,7 @@ log = logging.getLogger("ptt")
 class PTTController:
     """
     Contrôle PTT radio via DTR du port série AIOC.
-    Identique au PTTController Castanara (dsrdtr=False, rtscts=False, baudrate=115200).
+    (dsrdtr=False, rtscts=False, baudrate=115200).
     Thread-safe.
     """
 
@@ -32,8 +32,8 @@ class PTTController:
                 self.serial_port,
                 self.baudrate,
                 timeout=1,
-                dsrdtr=False,    # identique Castanara
-                rtscts=False,    # identique Castanara
+                dsrdtr=False,    
+                rtscts=False,    
             )
             self._ser.dtr = False
             self._ser.rts = False

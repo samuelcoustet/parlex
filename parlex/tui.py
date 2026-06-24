@@ -12,7 +12,7 @@ Layout :
     [Voicemail]  — inventaire avec durées + paramètres
     [Annonces]   — 10 slots : interval, offset, état
     [Sécurité]   — lock, codes, auto-lock
-    [Castanara]  — surveillance relais Castanara via HTTP
+    [Relais dist.] — surveillance relais distant via HTTP
     [Journal]    — log événements temps réel
   Footer : raccourcis clavier
 """
@@ -425,21 +425,21 @@ if TEXTUAL_OK:
 
 
     # ═════════════════════════════════════════════════════════════════════════
-    # Onglet Castanara — surveillance HTTP
+    # Onglet surveillance relais distant — HTTP
     # ═════════════════════════════════════════════════════════════════════════
 
-    class TabCastanara(Static):
-        """Onglet surveillance du relais Castanara via son API HTTP."""
+    class TabRemote(Static):
+        """Onglet surveillance d'un relais distant via son API HTTP."""
 
         DEFAULT_CSS = """
-        TabCastanara { padding: 1 2; }
-        TabCastanara .cast-label { color: $text-muted; width: 18; }
-        TabCastanara .cast-value { color: $text; }
-        TabCastanara .cast-tx    { color: cyan; }
-        TabCastanara .cast-ok    { color: green; }
-        TabCastanara .cast-warn  { color: yellow; }
-        TabCastanara .cast-err   { color: red; }
-        TabCastanara .cast-section { color: $accent; margin-top: 1; }
+        TabRemote { padding: 1 2; }
+        TabRemote .cast-label { color: $text-muted; width: 18; }
+        TabRemote .cast-value { color: $text; }
+        TabRemote .cast-tx    { color: cyan; }
+        TabRemote .cast-ok    { color: green; }
+        TabRemote .cast-warn  { color: yellow; }
+        TabRemote .cast-err   { color: red; }
+        TabRemote .cast-section { color: $accent; margin-top: 1; }
         """
 
         def __init__(self, url: str, rep=None, **kw):
@@ -449,7 +449,7 @@ if TEXTUAL_OK:
             self._data: dict = {}
 
         def compose(self) -> ComposeResult:
-            yield Static("Castanara — relais distant", classes="cast-section")
+            yield Static("Relais distant", classes="cast-section")
             yield Horizontal(
                 Input(value=self._url, id="cast_url_input", placeholder="http://host:8080"),
                 Button("Connecter", id="cast_connect", variant="primary"),
@@ -515,7 +515,7 @@ if TEXTUAL_OK:
                 if new_url:
                     self._url = new_url.rstrip("/")
                     if self._rep is not None:
-                        self._rep.config.castanara_url = self._url
+                        self._rep.config.remote_url = self._url
                         try:
                             self._rep.config.save()
                         except Exception:
@@ -682,8 +682,8 @@ if TEXTUAL_OK:
                     yield TabAnnonces(self.rep)
                 with TabPane("Sécurité",  id="tab_sec"):
                     yield TabSecurite(self.rep)
-                with TabPane("Castanara", id="tab_cast"):
-                    yield TabCastanara(self.rep.config.castanara_url, rep=self.rep)
+                with TabPane("Relais distant", id="tab_cast"):
+                    yield TabRemote(self.rep.config.remote_url, rep=self.rep)
                 with TabPane("Journal",   id="tab_log"):
                     self._tab_journal = TabJournal()
                     yield self._tab_journal

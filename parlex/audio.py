@@ -1,6 +1,6 @@
 """
 audio.py — Capture et playback audio via sounddevice (ALSA sous le capot)
-Pattern identique au projet Castanara (sd.InputStream callback + sd.play)
+Capture sounddevice (sd.InputStream callback + sd.play)
 """
 from __future__ import annotations
 import logging
@@ -19,10 +19,10 @@ log = logging.getLogger("audio")
 
 SAMPLE_RATE  = 48000
 CHANNELS     = 1
-BLOCK_SIZE   = 0        # laisser sounddevice choisir (comme Castanara)
+BLOCK_SIZE   = 0        # laisser sounddevice choisir 
 SAMPLE_WIDTH = 2        # bytes S16_LE
 
-PREBUFFER_SEC = 0.5     # pre-buffer avant déclenchement VOX (identique Castanara)
+PREBUFFER_SEC = 0.5     # pre-buffer avant déclenchement VOX 
 
 
 # ─── Niveau RMS ───────────────────────────────────────────────────────────────
@@ -42,7 +42,7 @@ def rms_level(data) -> float:
 
 def apply_ctcss(audio: np.ndarray, freq: float = 88.5,
                 amplitude: float = 0.05, sr: int = SAMPLE_RATE) -> np.ndarray:
-    """Ajoute sous-tonalité CTCSS sur signal float32 (identique Castanara)."""
+    """Ajoute sous-tonalité CTCSS sur signal float32 ."""
     t = np.arange(len(audio)) / sr
     tone = amplitude * np.sin(2 * np.pi * freq * t).astype(np.float32)
     return np.clip(audio + tone, -1.0, 1.0).astype(np.float32)
@@ -52,7 +52,7 @@ def apply_ctcss(audio: np.ndarray, freq: float = 88.5,
 
 class ALSACapture:
     """
-    Capture audio via sounddevice (callback pattern, identique Castanara).
+    Capture audio via sounddevice (callback pattern, ).
     device: nom ALSA string ou index numérique.
     callback(indata_flat_float32): appelé pour chaque bloc.
     """
@@ -105,7 +105,7 @@ class ALSACapture:
 # ─── Playback ALSA via sounddevice ────────────────────────────────────────────
 
 class ALSAPlayback:
-    """Lecture bloquante via sd.play() (identique Castanara)."""
+    """Lecture bloquante via sd.play() ."""
 
     def __init__(self, device, sample_rate: int = SAMPLE_RATE):
         self.device = device
@@ -139,7 +139,7 @@ class ALSAPlayback:
 class VOXDetector:
     """
     Détecte présence audio (VOX) sur flux float32.
-    Identique à la logique Castanara :
+    Identique à la logique :
       - rms > threshold → voix détectée, met à jour rx_last_voice
       - rms <= threshold ET (now - rx_last_voice) >= timeout → fermeture VOX
     """
@@ -193,7 +193,7 @@ class VOXDetector:
 class Recorder:
     """
     Enregistre des chunks float32 en mémoire.
-    Intègre un pre-buffer roulant (comme Castanara) pour ne pas perdre
+    Intègre un pre-buffer roulant  pour ne pas perdre
     le début de la transmission avant le déclenchement VOX.
     """
 
@@ -203,7 +203,7 @@ class Recorder:
         self.max_samples = int(max_seconds * sample_rate)
         self.prebuffer_size = int(prebuffer_sec * sample_rate)
         self.sample_rate = sample_rate
-        # Pre-buffer roulant (identique Castanara : np.roll)
+        # Pre-buffer roulant 
         self._prebuf = np.zeros(self.prebuffer_size, dtype=np.float32)
         self._chunks: list[np.ndarray] = []
         self._total_samples = 0
@@ -257,7 +257,7 @@ class Recorder:
 # ─── Stats QSO ────────────────────────────────────────────────────────────────
 
 class QSOStats:
-    """Statistiques de session (comme Castanara qso_stats)."""
+    """Statistiques de session ."""
 
     def __init__(self):
         self.qso_count = 0

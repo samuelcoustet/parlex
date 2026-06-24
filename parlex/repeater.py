@@ -142,7 +142,7 @@ class SimplexRepeater:
         if not self._running:
             return
 
-        # Pre-buffer roulant (identique Castanara) — mis à jour en permanence
+        # Pre-buffer roulant  — mis à jour en permanence
         self.recorder.update_prebuffer(audio)
 
         # DTMF décodage sur tous les états
@@ -193,7 +193,7 @@ class SimplexRepeater:
             threading.Thread(target=self._tx_standby, daemon=True).start()
 
         self._change_state(State.RECORDING)
-        # recorder.start() inclut déjà le pre-buffer (Castanara pattern)
+        # recorder.start() inclut déjà le pre-buffer 
         self.recorder.start()
         self.recorder.feed(first_chunk)
         self._recording_start = time.monotonic()
@@ -214,7 +214,7 @@ class SimplexRepeater:
                 self._end_recording()
                 return
 
-        # Max TX time (identique Castanara max_rx_duration)
+        # Max TX time 
         if cfg.max_tx_time > 0:
             elapsed = time.monotonic() - self._recording_start
             if elapsed >= cfg.max_tx_time:
@@ -242,7 +242,7 @@ class SimplexRepeater:
         self._emit_log(f"Enregistrement terminé ({duration:.1f}s)")
         log.info("Enregistrement terminé (%.1fs, timeout=%s)", duration, timeout)
 
-        # Min TX time check (identique Castanara min_rx_duration)
+        # Min TX time check 
         if duration < self.config.min_tx_time:
             self._emit_log(f"Trop court ({duration:.1f}s < {self.config.min_tx_time}s) — ignoré")
             self._change_state(State.IDLE)
@@ -271,7 +271,7 @@ class SimplexRepeater:
 
     def _retransmit(self, audio: "np.ndarray", was_timeout: bool = False) -> None:
         """
-        Retransmission avec tx_gain flottant (comme Castanara) + CTCSS optionnel.
+        Retransmission avec tx_gain flottant  + CTCSS optionnel.
         audio: float32 ndarray (avec pre-buffer inclus).
         """
         import numpy as np
@@ -282,10 +282,10 @@ class SimplexRepeater:
         if cfg.input_gain > 0:
             audio = audio * [1, 2, 4][cfg.input_gain]
 
-        # tx_gain multiplicateur flottant (identique Castanara tx_gain=3.5)
+        # tx_gain multiplicateur flottant 
         audio = np.clip(audio * cfg.tx_gain, -1.0, 1.0).astype(np.float32)
 
-        # CTCSS optionnel (hérité Castanara)
+        # CTCSS optionnel 
         ctcss = cfg.ctcss_enabled
         ctcss_freq = cfg.ctcss_freq
 
@@ -299,13 +299,13 @@ class SimplexRepeater:
                 self._key_down()
                 time.sleep(0.1)
 
-        # PTT + délai (identique Castanara : ptt.set_ptt(True) + sleep(0.3))
+        # PTT + délai  + sleep(0.3))
         self._key_up()
         time.sleep(cfg.tx_delay)
 
         self.playback.play_numpy(audio, gain=1.0, ctcss=ctcss, ctcss_freq=ctcss_freq)
 
-        # Courtesy tone (Roger beep dans Castanara = style 6)
+        # Courtesy tone (Roger beep dans  = style 6)
         if cfg.courtesy_tone > 0:
             if cfg.courtesy_tone_delay:
                 time.sleep(1.0)
@@ -314,7 +314,7 @@ class SimplexRepeater:
 
         self._key_down()
 
-        # Stats QSO (identique Castanara)
+        # Stats QSO 
         self.stats.record_tx(time.time() - tx_start)
 
         # Voice ID auto-response

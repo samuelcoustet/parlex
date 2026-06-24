@@ -55,9 +55,9 @@ class RepeaterConfig:
     cooldown_time:     float = 0.0         # ##18 (0=disabled)
     tx_delay:          float = 0.5         # ##92 délai PTT→audio
     tx_audio_level:    int   = 99          # ##11 (0-99, mappé sur tx_gain)
-    tx_gain:           float = 3.5         # multiplicateur réel (comme Castanara, peut être > 1.0)
+    tx_gain:           float = 3.5         # multiplicateur réel (peut être > 1.0)
     input_gain:        int   = 0           # ##107 (0=1x, 1=2x, 2=4x)
-    # ── CTCSS (hérité Castanara) ───────────────────────────────────────────
+    # ── CTCSS ──────────────────────────────────────────────────────────────
     ctcss_enabled:     bool  = False       # sous-tonalité CTCSS sur TX
     ctcss_freq:        float = 88.5        # Hz
     courtesy_tone:     int   = 1           # ##12
@@ -86,8 +86,8 @@ class RepeaterConfig:
     cw_responder_on:  bool  = False        # ##15
     cw_inhibit_timer: float = 600.0        # ##84 (10 min défaut)
     cw_speed:         int   = 80           # ##81 (0-99, mappé sur cw_wpm)
-    cw_wpm:           int   = 15           # WPM direct (comme Castanara cw_wpm)
-    cw_freq:          int   = 800          # Hz ton CW (comme Castanara cw_freq)
+    cw_wpm:           int   = 15           # WPM direct
+    cw_freq:          int   = 800          # Hz ton CW
 
     # ── Voicemail ──────────────────────────────────────────────────────────
     voicemail_on:     bool  = False        # ##72/##73
@@ -106,9 +106,9 @@ class RepeaterConfig:
     # ── Output pins ────────────────────────────────────────────────────────
     output_pins: dict = field(default_factory=lambda: {"0": False, "1": False})
 
-    # ── Surveillance relais Castanara ───────────────────────────────────────
-    castanara_url:     str  = "http://localhost:8080"
-    castanara_enabled: bool = False
+    # ── Surveillance relais distant (HTTP) ─────────────────────────────────
+    remote_url:     str  = "http://localhost:8080"
+    remote_enabled: bool = False
 
     @classmethod
     def load(cls, path: Path = CONFIG_PATH) -> "RepeaterConfig":

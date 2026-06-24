@@ -1,6 +1,6 @@
 """
 dtmf.py — Détection DTMF temps-réel
-Combine FFT+Hamming (approche Castanara) avec debounce 3-hits consécutifs
+Combine FFT+Hamming (approche ) avec debounce 3-hits consécutifs
 et gap de 0.5s entre répétitions du même digit.
 """
 from __future__ import annotations
@@ -19,20 +19,20 @@ DTMF_PAD = [
     ['*', '0', '#', 'D'],
 ]
 
-# Paramètres debounce (identiques Castanara)
+# Paramètres debounce
 MIN_LEVEL    = 0.05      # amplitude minimale (abs max)
 SPEC_RATIO   = 15        # les pics DTMF doivent dominer ×15 la moyenne spectrale
-TWIST_MIN    = 0.5       # ratio row/col minimum (identique Castanara)
+TWIST_MIN    = 0.5       # ratio row/col minimum 
 TWIST_MAX    = 2.0       # ratio row/col maximum
 CONSEC_HITS  = 3         # hits consécutifs requis (~150ms à 50ms/cycle)
-PROCESS_INT  = 0.05      # intervalle entre analyses (s) — identique Castanara
+PROCESS_INT  = 0.05      # intervalle entre analyses (s) — 
 SAME_GAP     = 0.5       # délai min entre deux détections du même digit
 SEQ_TIMEOUT  = 4.0       # effacement séquence si silence > 4s
 
 
 class DTMFDecoder:
     """
-    Décodeur DTMF incrémental (algorithme Castanara + debounce).
+    Décodeur DTMF incrémental (FFT+Hamming + debounce).
     Appeler feed() avec des chunks float32.
     pop_digits() retourne et vide le buffer de digits validés.
     """
@@ -41,7 +41,7 @@ class DTMFDecoder:
         self.sr = sample_rate
         self._rolling = np.zeros(4096, dtype=np.float32)
 
-        # Debounce state (identique Castanara)
+        # Debounce state 
         self._last_detected:    Optional[str] = None
         self._consec_hits:      int = 0
         self._last_char:        Optional[str] = None
@@ -70,7 +70,7 @@ class DTMFDecoder:
         self._debounce(digit, now)
 
     def _detect(self, block: np.ndarray) -> Optional[str]:
-        """Détection FFT+Hamming (identique Castanara detect_dtmf)."""
+        """Détection FFT+Hamming ."""
         if np.max(np.abs(block)) < MIN_LEVEL:
             return None
 
@@ -89,7 +89,7 @@ class DTMFDecoder:
         if max_r <= avg * SPEC_RATIO or max_c <= avg * SPEC_RATIO:
             return None
 
-        # Twist check (identique Castanara)
+        # Twist check 
         ratio = max_r / max_c if max_c > 0 else 0.0
         if not (TWIST_MIN < ratio < TWIST_MAX):
             return None
@@ -99,7 +99,7 @@ class DTMFDecoder:
         return DTMF_PAD[r_idx][c_idx]
 
     def _debounce(self, digit: Optional[str], now: float) -> None:
-        """Debounce 3-hits consécutifs + gap 0.5s (identique Castanara)."""
+        """Debounce 3-hits consécutifs + gap 0.5s ."""
         if digit:
             if digit == self._last_detected:
                 self._consec_hits += 1
