@@ -1,4 +1,4 @@
-# relais simplex — RPi Zero + AIOC
+# Relais simplex — RPi Zero + AIOC
 
 Clone logiciel 1:1 du relais simplex **relais simplex store-and-forward**,
 implémenté en Python sur **Raspberry Pi Zero** avec **AIOC** (AllInOneCable)
