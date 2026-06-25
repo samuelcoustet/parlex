@@ -8,7 +8,7 @@ Type=notify
 User=root
 WorkingDirectory=/opt/parlex
 
-ExecStart=/opt/parlex/venv/bin/python -m parlex \
+ExecStart=/opt/parlex/venv/bin/python -m parlex run \
     --config /etc/parlex/config.yaml \
     --log-file /var/log/parlex.log
 
